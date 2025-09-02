@@ -1,0 +1,2 @@
+pytak~=7.0.2
+geographiclib~=2.1
