@@ -1,4 +1,4 @@
-
+from itertools import chain
 
 class SimulationManager:
     def __init__(self):
@@ -20,6 +20,8 @@ class SimulationManager:
     def update_positions(self):
         pass
 
+    def all_markers(self):
+        return chain(self.fire_incidents, self.fire_trucks)
 
 
 

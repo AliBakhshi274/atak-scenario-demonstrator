@@ -1,13 +1,8 @@
 import xml.etree.ElementTree as ET
 import pytak
-from geographiclib.geodesic import Geodesic
 
 from model.simulation_model import Marker
 
-geod = Geodesic.WGS84
-
-loc_center = (49.877691, 8.657028)
-current_phi = 0.0
 
 def generator_cot_xml(marker: Marker):
     """
