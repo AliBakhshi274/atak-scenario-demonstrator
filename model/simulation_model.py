@@ -9,12 +9,14 @@ class SimulationManager:
         uid = f"fire-incident-{len(self.fire_incidents) + 1}"
         new_fire = FireIncident(uid=uid, lat=lat, lon=lon)
         self.fire_incidents.append(new_fire)
+        # print(new_fire.uid)
         return new_fire
 
     def add_fire_truck(self, lat: float, lon: float):
         uid = f"fire-truck-{len(self.fire_trucks) + 1}"
         new_truck = FireTruck(uid=uid, lat=lat, lon=lon)
         self.fire_trucks.append(new_truck)
+        # print(new_truck.uid)
         return new_truck
         
     def update_positions(self):
@@ -23,6 +25,11 @@ class SimulationManager:
     def all_markers(self):
         return chain(self.fire_incidents, self.fire_trucks)
 
+    def get_marker_by_uid(self, uid: str):
+        for marker in self.all_markers():
+            if marker.uid == uid:
+                return marker
+        return None
 
 
 

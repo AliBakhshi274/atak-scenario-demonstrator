@@ -61,7 +61,8 @@ class MySender(pytak.QueueWorker):
         """Run the loop for processing or generating pre-CoT data."""
         while True:
             data = gen_cot()
-            self._logger.info("Sending:\n%s\n", data.decode())
+            print(f"..........{data}..........")
+            # self._logger.info("Sending:\n%s\n", data.decode())
             await self.handle_data(data)
             await asyncio.sleep(1)
 
@@ -72,9 +73,11 @@ class MyReceiver(pytak.QueueWorker):
     async def handle_data(self, data):
         """Handle data from the receive queue."""
         try:
-            self._logger.info("Received:\n%s\n", data.decode())
+            # self._logger.info("Received:\n%s\n", data.decode())
+            ...
         except UnicodeDecodeError as e:
-            self._logger.warning("Could not decode received data:\n%s", e)
+            # self._logger.warning("Could not decode received data:\n%s", e)
+            ...
 
     async def run(self):
         """Read from the receive queue, put data onto handler."""
@@ -96,6 +99,7 @@ async def main():
     # Initializes worker queues and tasks.
     clitool = pytak.CLITool(config)
     await clitool.setup()
+    # print(f"this is the config ............................{clitool.config}........")
 
     # Add your serializer to the asyncio task list.
     clitool.add_tasks(
