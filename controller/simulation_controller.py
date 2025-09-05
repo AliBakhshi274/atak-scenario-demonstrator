@@ -2,9 +2,11 @@ import asyncio
 from configparser import ConfigParser
 from geographiclib.geodesic import Geodesic
 import pytak
+import logging
 
 from model.simulation_model import SimulationManager
 from utils.cot_generator import generator_cot_xml
+
 
 class SimulationController:
     """ 
@@ -38,56 +40,45 @@ class SimulationController:
         """ create sample locs """
         fire_loc = (49.877691, 8.657028)
         truck_loc = (49.873091, 8.647028)
+        truck_loc2 = (49.870091, 8.660028)
         self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
         self.simulation_manager_M.add_fire_truck(lat=truck_loc[0], lon=truck_loc[1])
-
-        # self.sender = asyncio.create_task(self._send_loop())
+        self.simulation_manager_M.add_fire_truck(lat=truck_loc2[0], lon=truck_loc2[1])
 
         self.cli_tool.add_tasks(
-               set([MySender(
-                   self.cli_tool.tx_queue, 
-                   self.cli_tool.config, 
-                   self.simulation_manager_M
-                   )])
-               )
+            set([MySender(
+                self.cli_tool.tx_queue, 
+                self.cli_tool.config, 
+                self.simulation_manager_M)])
+        )
 
-        await self.cli_tool.run()
+        """ create new Thread for loop in run() """
+        self.sender = asyncio.create_task(self.cli_tool.run())
+
 
     async def stop_simulation(self):
         """ stop the simulation and cleans up. """
         if not self.is_running:
+            print("simulation is not running!")
             return
         
         self.is_running = False
-        print("simulation STOPPED!")
+        print("Stopping simulation...")
 
-        if self.sender:
+        if self.sender is not None:
             self.sender.cancel()
+            try:
+                await self.sender
+            except asyncio.CancelledError:
+                pass
 
         if self.cli_tool:
-            await self.cli_tool.close()
-
-    # async def _send_loop(self, queue_worker: pytak.QueueWorker):
-    #     super().__init__(queue_worker)
-    #     """ async loop for sending data """
-    #     while True:
-    #         for marker in self.simulation_manager_M.all_markers():
-    #             cot_xml = generator_cot_xml(marker=marker)
-    #             await queue_worker.put_queue(cot_xml)
-    #         await asyncio.sleep(3)
-
-    # async def _send_loop(self):
-    #     """ async loop for sending data """
-    #     while True:
-    #         for marker in self.simulation_manager_M.all_markers():
-    #             cot_xml = generator_cot_xml(marker=marker)
-    #             # print(cot_xml.decode())
-    #             self.cli_tool.tx_queue.put_nowait(cot_xml)
-    #         self.cli_tool.add_task(
-    #             set([pytak.QueueWorker(self.cli_tool.tx_queue, self.cli_tool.config)])
-    #         )
-    #         await asyncio.sleep(5)
-    #     # print(".............................................................")
+            tasks = list(self.cli_tool.tasks)
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            # clear queue
+            self.cli_tool.tx_queue = asyncio.Queue()
 
 class MySender(pytak.QueueWorker):
     def __init__(self, queue, config, simulation_manager):
@@ -100,9 +91,8 @@ class MySender(pytak.QueueWorker):
 
     async def run(self):
         while True:
-            marker = self.simulation_manager.get_marker_by_uid(uid="fire-truck-1")
-            print(marker)
-            data = generator_cot_xml(marker=marker)
-            print(f"..........{data}..........")
-            await self.handle_data(data)
-            await asyncio.sleep(1)
+            for marker in self.simulation_manager.all_markers():
+                data = generator_cot_xml(marker=marker)
+                self._logger.info("Sending:\n%s\n", data.decode())
+                await self.handle_data(data)
+            await asyncio.sleep(3)

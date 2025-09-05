@@ -14,12 +14,14 @@ async def main():
 
     try:
         while True:
-            await asyncio.sleep(1)
+            print("wait 5 min")
+            await asyncio.sleep(5)
+            await controller.stop_simulation()
     except asyncio.CancelledError:
         pass
-    except KeyboardInterrupt:
-        print("Stopping simulation...")
-        await controller.stop_simulation()
+    # except KeyboardInterrupt:
+    #     print("Stopping simulation...")
+    #     await controller.stop_simulation()
         
 if __name__ == "__main__":
     try:
