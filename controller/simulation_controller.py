@@ -40,10 +40,17 @@ class SimulationController:
         """ create sample locs """
         fire_loc = (49.877691, 8.657028)
         truck_loc = (49.873091, 8.647028)
-        truck_loc2 = (49.870091, 8.660028)
-        self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
-        self.simulation_manager_M.add_fire_truck(lat=truck_loc[0], lon=truck_loc[1])
-        self.simulation_manager_M.add_fire_truck(lat=truck_loc2[0], lon=truck_loc2[1])
+        fire_incident = self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
+        fire_truck = self.simulation_manager_M.add_fire_truck(lat=truck_loc[0], lon=truck_loc[1])
+
+        route = [
+            (49.873091, 8.647028), # Starting point
+            (49.875000, 8.650000), # First waypoint
+            (49.877000, 8.655000), # Second waypoint
+            fire_loc # Destination
+        ]
+
+        fire_truck.set_route(route=route)
 
         self.cli_tool.add_tasks(
             set([MySender(
@@ -93,6 +100,7 @@ class MySender(pytak.QueueWorker):
         while True:
             for marker in self.simulation_manager.all_markers():
                 data = generator_cot_xml(marker=marker)
-                self._logger.info("Sending:\n%s\n", data.decode())
+                # self._logger.info("Sending:\n%s\n", data.decode())
                 await self.handle_data(data)
             await asyncio.sleep(3)
+            self.simulation_manager.update_positions()

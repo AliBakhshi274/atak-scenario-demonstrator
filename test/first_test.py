@@ -14,8 +14,8 @@ async def main():
 
     try:
         while True:
-            print("wait 5 min")
-            await asyncio.sleep(5)
+            print("wait 3 min")
+            await asyncio.sleep(3)
             await controller.stop_simulation()
     except asyncio.CancelledError:
         pass
