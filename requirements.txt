@@ -1,2 +1,5 @@
-pytak~=7.0.2
-geographiclib~=2.1
+cffi==1.17.1
+cryptography==45.0.7
+geographiclib==2.1
+pycparser==2.22
+pytak==7.0.2

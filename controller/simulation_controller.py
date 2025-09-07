@@ -39,18 +39,30 @@ class SimulationController:
 
         """ create sample locs """
         fire_loc = (49.877691, 8.657028)
-        truck_loc = (49.873091, 8.647028)
-        fire_incident = self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
-        fire_truck = self.simulation_manager_M.add_fire_truck(lat=truck_loc[0], lon=truck_loc[1])
+        truck_1_loc = (49.873091, 8.647028)
+        truck_2_loc = (49.879091, 8.637028)
 
-        route = [
+        fire_incident = self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
+        fire_truck_1 = self.simulation_manager_M.add_fire_truck(lat=truck_1_loc[0], lon=truck_1_loc[1])
+        fire_truck_2 = self.simulation_manager_M.add_fire_truck(lat=truck_2_loc[0], lon=truck_2_loc[1])
+
+        route_fire_truck_1 = [
             (49.873091, 8.647028), # Starting point
             (49.875000, 8.650000), # First waypoint
             (49.877000, 8.655000), # Second waypoint
             fire_loc # Destination
         ]
 
-        fire_truck.set_route(route=route)
+        route_fire_truck_2 = [
+            (49.879091, 8.637028), # Starting point
+            (49.878091, 8.640000), # First waypoint
+            (49.876800, 8.650000), # Second waypoint
+            (49.877000, 8.655000), # Third waypoint
+            fire_loc # Destination
+        ]
+
+        fire_truck_1.set_route(route=route_fire_truck_1)
+        fire_truck_2.set_route(route=route_fire_truck_2)
 
         self.cli_tool.add_tasks(
             set([MySender(
@@ -102,5 +114,5 @@ class MySender(pytak.QueueWorker):
                 data = generator_cot_xml(marker=marker)
                 # self._logger.info("Sending:\n%s\n", data.decode())
                 await self.handle_data(data)
-            await asyncio.sleep(3)
+            await asyncio.sleep(0.5)
             self.simulation_manager.update_positions()
