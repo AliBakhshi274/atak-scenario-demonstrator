@@ -25,8 +25,9 @@ This project is a **proof-of-concept simulator** written in Python that demonstr
 
 2. Clone the repository and create a virtual environment:
     ```
-    git clone https://github.com/your-username/atak-simulator.git
-    cd atak-simulator
+    git clone https://github.com/AliBakhshi274/atak-scenario-demonstrator.git
+    cd atak-scenario-demonstrator
+    pip install virtualenv
     python3 -m venv venv
     source venv/bin/activate
     ```
