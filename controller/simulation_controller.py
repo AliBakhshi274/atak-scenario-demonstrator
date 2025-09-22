@@ -31,7 +31,7 @@ class SimulationController:
             return
         
         self.is_running = True
-        print("Simulation STARTED ...")
+        print("Simulation STARTED _controller_ ...")
 
         # Init network tools
         self.cli_tool = pytak.CLITool(config={"COT_URL": self.cot_url})
@@ -73,6 +73,10 @@ class SimulationController:
 
         """ create new Thread for loop in run() """
         self.sender = asyncio.create_task(self.cli_tool.run())
+
+        await self.sender
+
+        print("Simulation setup completed.")
 
 
     async def stop_simulation(self):
