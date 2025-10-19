@@ -3,11 +3,9 @@ import asyncio
 import threading
 import logging
 from tkinter import ttk
-from typing import Optional
+from utils.decorators import log_block, log_block_async
 
 from controller.simulation_controller import SimulationController
-
-logging.basicConfig(level=logging.INFO)
 
 class SimulationGUI(tk.Tk):
     def __init__(self, controller: SimulationController = None):
@@ -18,7 +16,7 @@ class SimulationGUI(tk.Tk):
         self.loop = None
         self.thread = None
         self.controller = SimulationController(config_path="config/settings.ini") if controller is None else controller
-        
+
         self.setup_widgets()
         # self.protocol("WM_DELETE_WINDOW", self.on_closing)
     
@@ -33,21 +31,22 @@ class SimulationGUI(tk.Tk):
         self.stop_button = ttk.Button(frame, text="Stop Simulation", command=self.stop_simulation, state=tk.DISABLED)
         self.stop_button.grid(row=0, column=1, padx=5, pady=5)
 
+    @log_block
     def start_simulation(self):
-        logging.info("_GUI_ start_simulation _STARTED_ ...")
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
-        
+
         # Create a new event loop and a thread, because tkinter is not async-aware
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(target=self._run_async_loop)
+        # Set the thread as a daemon to allow the program to exit without waiting for this thread to finish
         self.thread.daemon = True
         self.thread.start()
 
+    @log_block
     def stop_simulation(self):
-        logging.info("_GUI_ Stop button pressed!")
         self.stop_button.config(state=tk.DISABLED)
-        
+
         # Safely stop the event loop from the main thread
         if self.loop and self.loop.is_running():
             future = asyncio.run_coroutine_threadsafe(self.controller.stop_simulation(), self.loop)
@@ -56,30 +55,31 @@ class SimulationGUI(tk.Tk):
                 future.result(timeout=5)
             except Exception as e:
                 logging.error(f"Error stopping simulation: {e}")
-        
+
         self.start_button.config(state=tk.NORMAL)
 
+    @log_block
     def _run_async_loop(self):
         asyncio.set_event_loop(self.loop)
         try:
-            # Run the simulation until it's complete or stopped
+            # Run the simulation until it's complete or stopped (equivalent to await)
             self.loop.run_until_complete(self.controller.start_simulation())
-            print(".................................... Thread finished ..............................")
         except Exception as e:
             logging.error(f"Asyncio loop error: {e}")
         finally:
             # Clean up the loop
             if self.loop and not self.loop.is_closed():
                 self.loop.close()
-            # Update GUI state in the main thread
+            # Update GUI state in the main thread after stopping the simulation
             self.after(0, self._on_simulation_stopped)
-        print(".................................... Thread finished ..............................")
 
+    @log_block
     def _on_simulation_stopped(self):
         """Called when simulation stops to update UI state"""
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
 
+    @log_block
     def on_closing(self):
         """Handle window closing"""
         if self.controller.is_running:

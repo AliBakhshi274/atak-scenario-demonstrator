@@ -4,9 +4,9 @@ from geographiclib.geodesic import Geodesic
 import pytak
 import logging
 
-from model.simulation_model import SimulationManager
+from model.simulation_model import FireTruck, SimulationManager
 from utils.cot_generator import generator_cot_xml
-
+from utils.decorators import log_block_async, log_block
 
 class SimulationController:
     """ 
@@ -25,60 +25,71 @@ class SimulationController:
         self.sender = None
         self.cli_tool = None
 
+    @log_block_async
     async def start_simulation(self):
         """ start the simulation """
-        if self.is_running:
-            return
+        try:
+            if self.is_running is False:
+                logging.warning("simulation is already running!")
+                await self.stop_simulation()
+                # Reset simulation state
+                self.simulation_manager_M = SimulationManager()
         
-        self.is_running = True
-        print("Simulation STARTED _controller_ ...")
+            self.is_running = True
 
-        # Init network tools
-        self.cli_tool = pytak.CLITool(config={"COT_URL": self.cot_url})
-        await self.cli_tool.setup()
+            # Init network tools
+            self.cli_tool = pytak.CLITool(config={"COT_URL": self.cot_url})
+            await self.cli_tool.setup()
 
-        """ create sample locs """
-        fire_loc = (49.877691, 8.657028)
-        truck_1_loc = (49.873091, 8.647028)
-        truck_2_loc = (49.879091, 8.637028)
+            """ create sample locs """
+            fire_loc = (49.877691, 8.657028)
+            truck_1_loc = (49.873091, 8.647028)
+            truck_2_loc = (49.879091, 8.637028)
 
-        fire_incident = self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
-        fire_truck_1 = self.simulation_manager_M.add_fire_truck(lat=truck_1_loc[0], lon=truck_1_loc[1])
-        fire_truck_2 = self.simulation_manager_M.add_fire_truck(lat=truck_2_loc[0], lon=truck_2_loc[1])
+            fire_incident = self.simulation_manager_M.add_fire_incident(lat=fire_loc[0], lon=fire_loc[1])
+            fire_truck_1 = self.simulation_manager_M.add_fire_truck(lat=truck_1_loc[0], lon=truck_1_loc[1])
+            fire_truck_2 = self.simulation_manager_M.add_fire_truck(lat=truck_2_loc[0], lon=truck_2_loc[1])
 
-        route_fire_truck_1 = [
-            (49.873091, 8.647028), # Starting point
-            (49.875000, 8.650000), # First waypoint
-            (49.877000, 8.655000), # Second waypoint
-            fire_loc # Destination
-        ]
+            route_fire_truck_1 = [
+                (49.873091, 8.647028), # Starting point
+                (49.875000, 8.650000), # First waypoint
+                (49.877000, 8.655000), # Second waypoint
+                fire_loc # Destination
+            ]
 
-        route_fire_truck_2 = [
-            (49.879091, 8.637028), # Starting point
-            (49.878091, 8.640000), # First waypoint
-            (49.876800, 8.650000), # Second waypoint
-            (49.877000, 8.655000), # Third waypoint
-            fire_loc # Destination
-        ]
+            route_fire_truck_2 = [
+                (49.879091, 8.637028), # Starting point
+                (49.878091, 8.647028), # First waypoint
+                (49.876800, 8.660000), # Second waypoint
+                (49.877000, 8.655000), # Third waypoint
+                fire_loc # Destination
+            ]
 
-        fire_truck_1.set_route(route=route_fire_truck_1)
-        fire_truck_2.set_route(route=route_fire_truck_2)
+            fire_truck_1.set_route(route=route_fire_truck_1)
+            fire_truck_2.set_route(route=route_fire_truck_2)
 
-        self.cli_tool.add_tasks(
-            set([MySender(
-                self.cli_tool.tx_queue, 
-                self.cli_tool.config, 
-                self.simulation_manager_M)])
-        )
+            self.sender_task = MySender(
+                queue=self.cli_tool.tx_queue,
+                config=self.cli_tool.config,
+                simulation_manager=self.simulation_manager_M
+            )
+            self.cli_tool.add_tasks(
+                set([self.sender_task])
+            )
 
-        """ create new Thread for loop in run() """
-        self.sender = asyncio.create_task(self.cli_tool.run())
+            """ create new Thread for loop in run() """
+            self.sender = asyncio.create_task(self.cli_tool.run())
 
-        await self.sender
+            await self.sender
+        except asyncio.CancelledError:
+            logging.info("Simulation was cancelled.")
+            await self.cli_tool.close()
+            self.cli_tool = None
+            self.sender = None
+            self.sender_task = None
+            self.cli_tool = None
 
-        print("Simulation setup completed.")
-
-
+    @log_block_async
     async def stop_simulation(self):
         """ stop the simulation and cleans up. """
         if not self.is_running:
@@ -86,7 +97,9 @@ class SimulationController:
             return
         
         self.is_running = False
-        print("Stopping simulation...")
+
+        if hasattr(self, 'sender_task'):
+            self.sender_task.stop()
 
         if self.sender is not None:
             self.sender.cancel()
@@ -96,27 +109,39 @@ class SimulationController:
                 pass
 
         if self.cli_tool:
-            tasks = list(self.cli_tool.tasks)
-            for task in tasks:
+            for task in list(self.cli_tool.tasks):
                 task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+                task = None
+            await asyncio.gather(*self.cli_tool.tasks, return_exceptions=True)
             # clear queue
             self.cli_tool.tx_queue = asyncio.Queue()
+            self.cli_tool = None
+            self.sender = None
+            self.sender_task = None
 
 class MySender(pytak.QueueWorker):
-    def __init__(self, queue, config, simulation_manager):
+    def __init__(self, queue, config, simulation_manager: SimulationManager):
         super().__init__(queue, config)
         self.simulation_manager = simulation_manager
+        self.sending = True
 
+    def stop(self):
+        self.sending = False
+        
     async def handle_data(self, data):
         event = data
         await self.put_queue(event)
 
+    @log_block_async
     async def run(self):
-        while True:
+        while self.sending:
             for marker in self.simulation_manager.all_markers():
+                # it's not working as expected (marker need to be exactly on the last point)
+                # if isinstance(marker, FireTruck) and marker.has_arrived():
+                #     print(f"{marker.uid} has arrived at destination.")
+                #     continue
                 data = generator_cot_xml(marker=marker)
                 # self._logger.info("Sending:\n%s\n", data.decode())
                 await self.handle_data(data)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.08)  # Adjust the sleep duration as needed
             self.simulation_manager.update_positions()

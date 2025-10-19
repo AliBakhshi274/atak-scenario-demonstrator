@@ -37,6 +37,8 @@ class SimulationManager:
                 return marker
         return None
 
+    def all_trucks_arrived(self):
+        return all(truck.has_arrived() for truck in self.fire_trucks)
 
 
 class Marker:
@@ -55,7 +57,7 @@ class FireTruck(Marker):
         super().__init__(uid, "a-.-G-E-V", lat, lon)
         self.route = [] # list of (lat, lon)
         self.current_step = 0
-        self.speed_m_per_s = 100 # speed in meters per second
+        self.speed_m_per_s = 50 # speed in meters per second
 
     def set_route(self, route: list):
         self.route = route
@@ -83,6 +85,7 @@ class FireTruck(Marker):
             new_position = geod.Direct(start_lat, start_lon, azimuth_to_target, self.speed_m_per_s)
             self.lat, self.lon = new_position['lat2'], new_position['lon2']
 
-    
+    def has_arrived(self):
+        return self.current_step >= len(self.route) - 1
 
 
