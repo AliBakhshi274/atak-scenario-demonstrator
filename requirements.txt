@@ -1,5 +1,12 @@
+blinker==1.9.0
 cffi==1.17.1
+click==8.3.0
 cryptography==45.0.7
+Flask==3.1.2
 geographiclib==2.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
 pycparser==2.22
 pytak==7.0.2
+Werkzeug==3.1.3
