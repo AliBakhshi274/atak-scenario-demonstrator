@@ -25,11 +25,11 @@ class SimulationController:
         self.sender = None
         self.cli_tool = None
 
-    @log_block_async
+    # @log_block_async
     async def start_simulation(self):
         """ start the simulation """
         try:
-            if self.is_running is False:
+            if self.is_running:
                 logging.warning("simulation is already running!")
                 await self.stop_simulation()
                 # Reset simulation state
@@ -83,13 +83,46 @@ class SimulationController:
             await self.sender
         except asyncio.CancelledError:
             logging.info("Simulation was cancelled.")
-            await self.cli_tool.close()
-            self.cli_tool = None
-            self.sender = None
-            self.sender_task = None
-            self.cli_tool = None
+            await self._cleanup()
+            # await self.cli_tool.close()
+            # self.cli_tool = None
+            # self.sender = None
+            # self.sender_task = None
+            # self.cli_tool = None
+        except Exception as e:
+            logging.error(f"Error in start_simulation: {e}")
+            await self._cleanup()
 
-    @log_block_async
+    # @log_block_async
+    # async def stop_simulation(self):
+    #     """ stop the simulation and cleans up. """
+    #     if not self.is_running:
+    #         print("simulation is not running!")
+    #         return
+        
+    #     self.is_running = False
+
+    #     if hasattr(self, 'sender_task'):
+    #         self.sender_task.stop()
+
+    #     if self.sender is not None:
+    #         self.sender.cancel()
+    #         try:
+    #             await self.sender
+    #         except asyncio.CancelledError:
+    #             pass
+
+    #     if self.cli_tool:
+    #         for task in list(self.cli_tool.tasks):
+    #             task.cancel()
+    #             task = None
+    #         await asyncio.gather(*self.cli_tool.tasks, return_exceptions=True)
+    #         # clear queue
+    #         self.cli_tool.tx_queue = asyncio.Queue()
+    #         self.cli_tool = None
+    #         self.sender = None
+    #         self.sender_task = None
+
     async def stop_simulation(self):
         """ stop the simulation and cleans up. """
         if not self.is_running:
@@ -97,28 +130,44 @@ class SimulationController:
             return
         
         self.is_running = False
+        await self._cleanup()
 
-        if hasattr(self, 'sender_task'):
-            self.sender_task.stop()
 
-        if self.sender is not None:
-            self.sender.cancel()
-            try:
-                await self.sender
-            except asyncio.CancelledError:
-                pass
+    async def _cleanup(self):
+        """Cleanup resources"""
+        try:
+            # stop sender_task
+            if hasattr(self, 'sender_task') and self.sender_task:
+                self.sender_task.stop()
+                self.sender_task = None
 
-        if self.cli_tool:
-            for task in list(self.cli_tool.tasks):
-                task.cancel()
-                task = None
-            await asyncio.gather(*self.cli_tool.tasks, return_exceptions=True)
-            # clear queue
-            self.cli_tool.tx_queue = asyncio.Queue()
-            self.cli_tool = None
-            self.sender = None
-            self.sender_task = None
+            if self.sender and not self.sender.done():
+                self.sender.cancel()
+                try:
+                    await asyncio.wait_for(self.sender, timeout=2.0)  # اضافه کردن timeout
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+                self.sender = None
 
+            # cleanup cli_tool
+            if self.cli_tool:
+                if hasattr(self.cli_tool, 'tasks'):
+                    tasks_to_cancel = [task for task in self.cli_tool.tasks if not task.done()]
+                    for task in tasks_to_cancel:
+                        task.cancel()
+                    
+                    if tasks_to_cancel:
+                        try:
+                            await asyncio.wait_for(asyncio.gather(*tasks_to_cancel, return_exceptions=True), timeout=3.0)
+                        except asyncio.TimeoutError:
+                            pass
+                
+                self.cli_tool.tx_queue = asyncio.Queue()
+                self.cli_tool = None
+                
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
+            
 class MySender(pytak.QueueWorker):
     def __init__(self, queue, config, simulation_manager: SimulationManager):
         super().__init__(queue, config)
@@ -132,7 +181,7 @@ class MySender(pytak.QueueWorker):
         event = data
         await self.put_queue(event)
 
-    @log_block_async
+    # @log_block_async
     async def run(self):
         while self.sending:
             for marker in self.simulation_manager.all_markers():

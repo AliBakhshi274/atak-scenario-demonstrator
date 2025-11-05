@@ -29,7 +29,7 @@ logging.basicConfig(
 #         print("Program terminated.")
 
 
-from flask import Flask
+from flask import Flask, render_template
 from blueprints.api import api_bp
 from controller.simulation_controller import SimulationController
 
@@ -37,6 +37,11 @@ from controller.simulation_controller import SimulationController
 def create_app():
     app = Flask(__name__)
     app.register_blueprint(api_bp)
+
+    @app.route('/', methods=['GET', 'POST'])
+    def index():
+        return render_template('index.html')
+
     return app
 
 if __name__ == '__main__':

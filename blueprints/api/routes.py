@@ -22,7 +22,7 @@ def start_simulation():
             'status': 'Simulation is already running.'
         }), 400
 
-    asyncio.run(SIMULATION_CONTROLLER.start_simulation())
+    run_async(SIMULATION_CONTROLLER.start_simulation())
 
     logging.info("Simulation started via API.")
 
@@ -42,27 +42,86 @@ def stop_simulation():
             'status': 'Simulation is not running.'
         }), 400
 
-    asyncio.run(SIMULATION_CONTROLLER.stop_simulation())
-
-    logging.info("Simulation stopped via API.")
-
-    return jsonify({
-        'status': app_status['status'],
-        'message': 'Simulation stopped successfully.',
-    }), 200
+    try:
+        run_async(SIMULATION_CONTROLLER.stop_simulation())
+        logging.info("Simulation stopped via API.")
+        
+        return jsonify({
+            'status': app_status['status'],
+            'message': 'Simulation stopped successfully.',
+        }), 200
+    except Exception as e:
+        logging.error(f"Error stopping simulation: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error stopping simulation: {str(e)}'
+        }), 500
 
 @api_bp.route('/reset', methods=['GET', 'POST'])
 def reset_simulation():
     app_status['status'] = 'reset'
 
-    if SIMULATION_CONTROLLER.is_running:
-        asyncio.run(SIMULATION_CONTROLLER.stop_simulation())
+    try:
+        if SIMULATION_CONTROLLER.is_running:
+            run_async(SIMULATION_CONTROLLER.stop_simulation())
+        
+        import time
+        time.sleep(1)
+        
+        run_async(SIMULATION_CONTROLLER.start_simulation())
 
-    asyncio.run(SIMULATION_CONTROLLER.start_simulation())
+        logging.info("Simulation reset via API.")
 
-    logging.info("Simulation reset via API.")
+        return jsonify({
+            'status': app_status['status'],
+            'message': 'Simulation reset successfully.',
+        }), 200
+    except Exception as e:
+        logging.error(f"Error resetting simulation: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error resetting simulation: {str(e)}'
+        }), 500
 
-    return jsonify({
-        'status': app_status['status'],
-        'message': 'Simulation reset successfully.',
-    }), 200
+
+def run_async(corotask):
+    try:
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        if loop.is_running():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                result = new_loop.run_until_complete(corotask)
+                new_loop.close()
+                return result
+            except Exception as e:
+                new_loop.close()
+                raise e
+        else:
+            return loop.run_until_complete(corotask)
+            
+    except Exception as e:
+        logging.error(f"Error in run_async: {e}")
+        raise e
+
+
+# def run_async(corotask):
+
+#     try:
+#         loop = asyncio.get_event_loop()
+#         if loop.is_running():
+#             new_loop = asyncio.new_event_loop()
+#             asyncio.set_event_loop(new_loop)
+#             try:
+#                 return new_loop.run_until_complete(corotask)
+#             finally:
+#                 new_loop.close()
+#         else:
+#             return loop.run_until_complete(corotask)
+#     except RuntimeError:
+#         return asyncio.run(corotask)
