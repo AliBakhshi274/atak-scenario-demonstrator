@@ -1,53 +1,72 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const startButton = document.getElementById('startButton');
-    const stopButton = document.getElementById('stopButton');
-    const resetButton = document.getElementById('resetButton');
-    const statusMessage = document.getElementById('statusMessage');
-    const logArea = document.getElementById('logArea');
-    const API_URL = '/api';
+  const startButton = document.getElementById('startButton');
+  const stopButton = document.getElementById('stopButton');
+  const resetButton = document.getElementById('resetButton');
+  //   const statusMessage = document.getElementById('statusMessage');
+  const speedSlider = document.getElementById('speedSlider');
+  const speedValueDisplay = document.getElementById('speedValDisplay');
+  const API_URL = '/api';
 
+  const sendCommand = async (endpoint, method = 'POST', requestData = null) => {
+    try {
+      const response = await fetch(API_URL + endpoint, {
+        method: method,
+        headers: requestData
+          ? { 'Content-Type': 'application/json' }
+          : undefined,
+        body: requestData ? JSON.stringify(requestData) : undefined,
+      });
 
-    const sendCommand = async (endpoint, method = 'POST') => {
-        logArea.textContent += `\n> Sending command: ${endpoint}...`;
-        try {
-            const response = await fetch(API_URL + endpoint, { method: method });
-            const data = await response.json();
+      return await response.json();
+      //   const responseData = await response.json();
+      //   if (response.ok) {
+      //     statusMessage.textContent = `status: ${responseData.status}`;
+      //   } else {
+      //     statusMessage.textContent = `Error: ${responseData.status}`;
+      //   }
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  };
 
-            if (response.ok) {
-                statusMessage.textContent = `status: ${data.status}`;
-                logArea.textContent += `\n[SUCCESS] ${data.message}`;
-            } else {
-                logArea.textContent += `\n[ERROR] ${data.message || 'response without any message! or response not OK'}`;
-            }
-        } catch (error) {
-            logArea.textContent += `\n[FATAL ERROR] FATAL ERROR`;
-            console.error('Fetch error:', error);
-        }
-        logArea.scrollTop = logArea.scrollHeight;
-    };
+  const setSpeed = async (speedValue) => {
+    const d = { speed: speedValue };
+    const result = await sendCommand(
+      (endpoint = '/set-speed'),
+      (method = 'POST'),
+      (requestData = d)
+    );
+    console.log('Speed set to:', result, 'x');
+  };
 
-    startButton.addEventListener('click', () => {
-        console.log("JS. START BTN")
-        sendCommand('/start');
-        startButton.disabled = true;
-        stopButton.disabled = false;
-        resetButton.disabled = false
-    });
+  startButton.addEventListener('click', () => {
+    console.log('JS. START BTN');
+    sendCommand('/start');
+    startButton.disabled = true;
+    stopButton.disabled = false;
+    resetButton.disabled = false;
+  });
 
-    stopButton.addEventListener('click', () => {
-        console.log("JS. STOP BTN")
-        sendCommand('/stop');
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        resetButton.disabled = true;
-    });
+  stopButton.addEventListener('click', () => {
+    console.log('JS. STOP BTN');
+    sendCommand('/stop');
+    startButton.disabled = false;
+    stopButton.disabled = true;
+    resetButton.disabled = true;
+  });
 
-    resetButton.addEventListener('click', () => {
-        console.log("JS. RST BTN")
-        sendCommand('/reset');
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        resetButton.disabled = true;
-    });
+  resetButton.addEventListener('click', () => {
+    console.log('JS. RST BTN');
+    sendCommand('/reset');
+    startButton.disabled = false;
+    stopButton.disabled = true;
+    resetButton.disabled = true;
+  });
 
+  speedSlider.addEventListener('input', () => {
+    const speedValue = parseFloat(speedSlider.value);
+    console.log('Speed slider input:', speedValue);
+    setSpeed(speedValue);
+    speedValueDisplay.textContent = speedValue;
+  });
 });

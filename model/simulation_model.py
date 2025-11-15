@@ -3,6 +3,8 @@ from geographiclib.geodesic import Geodesic
 
 geod = Geodesic.WGS84
 
+_base_speed_m_per_s = 5 # speed in meters per second (approx 18 km/h)
+
 class SimulationManager:
     def __init__(self):
         self.fire_incidents = []
@@ -26,6 +28,11 @@ class SimulationManager:
         """ update the positions of all movable markers """
         for truck in self.fire_trucks:
             truck.update_position()
+    
+    def set_speed(self, speed_factor: float):
+        """ set speed for all fire trucks """
+        for truck in self.fire_trucks:
+            truck.set_speed(speed_factor)
             
 
     def all_markers(self):
@@ -57,11 +64,15 @@ class FireTruck(Marker):
         super().__init__(uid, "a-.-G-E-V", lat, lon)
         self.route = [] # list of (lat, lon)
         self.current_step = 0
-        self.speed_m_per_s = 5 # speed in meters per second (70 km/h)
+        self.current_speed_m_per_s = _base_speed_m_per_s # speed in meters per second (approx 18 km/h)
 
     def set_route(self, route: list):
         self.route = route
         self.current_step = 0
+
+    def set_speed(self, speed_factor: float):
+        """ set speed as a factor of the base speed """
+        self.current_speed_m_per_s = _base_speed_m_per_s * speed_factor
 
     def update_position(self):
         """ Move fire_truck one step along its route """
@@ -76,16 +87,14 @@ class FireTruck(Marker):
         distance_to_target = result['s12'] # in meters
         azimuth_to_target = result['azi1'] # in degrees
 
-        if distance_to_target <= self.speed_m_per_s:
+        if distance_to_target <= self.current_speed_m_per_s:
             # If within one step, move directly to the target point
             self.lat, self.lon = target_lat, target_lon
             self.current_step += 1
         else:
-            # Move towards the target point by speed_m_per_s
-            new_position = geod.Direct(start_lat, start_lon, azimuth_to_target, self.speed_m_per_s)
+            # Move towards the target point by current_speed_m_per_s
+            new_position = geod.Direct(start_lat, start_lon, azimuth_to_target, self.current_speed_m_per_s)
             self.lat, self.lon = new_position['lat2'], new_position['lon2']
 
     def has_arrived(self):
         return self.current_step >= len(self.route) - 1
-
-

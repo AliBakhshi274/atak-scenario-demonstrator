@@ -148,6 +148,9 @@ class SimulationController:
         except Exception as e:
             logging.error(f"Error during cleanup: {e}")
             
+    def set_speed(self, speed_factor: float):
+        """ set speed for all fire trucks """
+        self.simulation_manager_M.set_speed(speed_factor)
 class MySender(pytak.QueueWorker):
     def __init__(self, queue, config, simulation_manager: SimulationManager):
         super().__init__(queue, config)

@@ -5,6 +5,7 @@ from datetime import datetime
 import threading
 from . import api_bp, SIMULATION_CONTROLLER
 from utils.decorators import log_block, log_block_async
+from flask import request
 
 app_status = {
     'status':'stopped',
@@ -82,6 +83,27 @@ def reset_simulation():
             'status': 'error',
             'message': f'Error resetting simulation: {str(e)}'
         }), 500
+
+
+@api_bp.route('/set-speed', methods=['GET', 'POST'])
+def set_speed():
+    ''' change the speed of the simulation (change acceleration factor) '''
+    try:
+        data = request.get_json()
+        speed_factor = float(data.get('speed'))
+        SIMULATION_CONTROLLER.set_speed(speed_factor)
+    except Exception as e:
+        logging.error(f"Error setting speed: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error setting speed: {str(e)}'
+        }), 500
+
+
+    return jsonify({
+        'status': 'success',
+        'message': 'Speed set successfully.'
+    }), 200
 
 
 def run_async(corotask):
