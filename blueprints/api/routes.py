@@ -24,7 +24,7 @@ def start_simulation():
 
     run_async(SIMULATION_CONTROLLER.start_simulation())
 
-    logging.info("Simulation started via API.")
+    logging.info("Simulation started viaa API.")
 
     return jsonify({
         'status': app_status['status'],
@@ -63,12 +63,12 @@ def reset_simulation():
 
     try:
         if SIMULATION_CONTROLLER.is_running:
-            run_async(SIMULATION_CONTROLLER.stop_simulation())
+            run_async(SIMULATION_CONTROLLER.reset_simulation())
         
         import time
         time.sleep(1)
         
-        run_async(SIMULATION_CONTROLLER.start_simulation())
+        # run_async(SIMULATION_CONTROLLER.start_simulation())
 
         logging.info("Simulation reset via API.")
 
@@ -108,20 +108,3 @@ def run_async(corotask):
     except Exception as e:
         logging.error(f"Error in run_async: {e}")
         raise e
-
-
-# def run_async(corotask):
-
-#     try:
-#         loop = asyncio.get_event_loop()
-#         if loop.is_running():
-#             new_loop = asyncio.new_event_loop()
-#             asyncio.set_event_loop(new_loop)
-#             try:
-#                 return new_loop.run_until_complete(corotask)
-#             finally:
-#                 new_loop.close()
-#         else:
-#             return loop.run_until_complete(corotask)
-#     except RuntimeError:
-#         return asyncio.run(corotask)

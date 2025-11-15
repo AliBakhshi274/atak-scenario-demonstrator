@@ -1,12 +1,17 @@
+asgiref==3.10.0
 blinker==1.9.0
 cffi==1.17.1
 click==8.3.0
 cryptography==45.0.7
+distlib==0.4.0
+filelock==3.20.0
 Flask==3.1.2
 geographiclib==2.1
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
+platformdirs==4.5.0
 pycparser==2.22
 pytak==7.0.2
+virtualenv==20.35.4
 Werkzeug==3.1.3

@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sendCommand('/stop');
         startButton.disabled = false;
         stopButton.disabled = true;
-        resetButton.disabled = false
+        resetButton.disabled = true;
     });
 
     resetButton.addEventListener('click', () => {
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sendCommand('/reset');
         startButton.disabled = false;
         stopButton.disabled = true;
-        resetButton.disabled = false
+        resetButton.disabled = true;
     });
 
 });

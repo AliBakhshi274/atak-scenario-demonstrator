@@ -57,7 +57,7 @@ class FireTruck(Marker):
         super().__init__(uid, "a-.-G-E-V", lat, lon)
         self.route = [] # list of (lat, lon)
         self.current_step = 0
-        self.speed_m_per_s = 50 # speed in meters per second
+        self.speed_m_per_s = 5 # speed in meters per second (70 km/h)
 
     def set_route(self, route: list):
         self.route = route
